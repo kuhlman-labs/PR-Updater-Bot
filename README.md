@@ -45,4 +45,4 @@ In the `config.yml` file, update the `app_id` , `wehook secret` and `private_key
 
 ### Run the App
 
-Start the app by running `go run main.go`. You can also build the app by running `go build` and then running the executable.
+Start the app by running `go run pull-updater.go`. You can also build the app by running `go build` and then running the executable.
