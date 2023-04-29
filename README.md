@@ -22,7 +22,12 @@ The app will need the following permissions:
 
 | Permission | Access |
 | ---------- | ------ |
-| Pull requests | Read & write |
+| Pull requests | Read & Write |
+| Content | Read & Write |
+
+Subscribe to the following events:
+
+* `Pull Requests`
 
 #### Generate a Private Key
 
