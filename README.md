@@ -1,6 +1,6 @@
-# Pull Request Updater
+# Pull Updater Bot
 
-This is a simple GitHub App that will attempt to update the merge branch of a pull request when the base branch is updated.
+This is a simple GitHub App that will attempt to update the head of a pull request branch as commits are pushed if it is behind the base branch.
 
 ## Usage
 
