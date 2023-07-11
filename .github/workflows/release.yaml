@@ -23,7 +23,9 @@ jobs:
       run: go mod download
 
     - name: Build
-      run: go build pull-updater.go
+      run: |
+        export CGO_ENABLED=0 
+        go build pull-updater.go
 
     - name: GH Release
       uses: softprops/action-gh-release@v0.1.15
