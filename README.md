@@ -1,6 +1,6 @@
 # Pull Updater Bot
 
-This is a simple GitHub App that will attempt to update the head of a pull request branch as commits are pushed if it is behind the base branch.
+This is a simple GitHub App that will attempt to update the head of a pull request branch as commits are pushed to the default branch of the repository. This is useful for keeping pull requests up to date with the default branch.
 
 ## Usage
 
@@ -27,7 +27,7 @@ The app will need the following permissions:
 
 Subscribe to the following events:
 
-* `Pull Requests`
+* `Push`
 
 #### Generate a Private Key
 

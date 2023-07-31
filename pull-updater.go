@@ -54,9 +54,10 @@ func readConfig(path string) (*Config, error) {
 }
 
 func (h *PRBranchUpdateHandler) Handles() []string {
-	return []string{"pull_request"}
+	return []string{"push"}
 }
 
+/*
 func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryID string, payload []byte) error {
 	// Parse the pull request event
 	var event github.PullRequestEvent
@@ -134,6 +135,90 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 		logger.Debug().Msgf("Pull request %s/%s#%d on branch %s is up to date with base branch %s", repoOwner, repoName, prNum, headRef, baseRef)
 	}
 
+	return nil
+}
+*/
+
+// This handler is called when the server recives a webhook event for a push to the default branch
+// The handler will then update all open pull requests that are behind the default branch
+func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryID string, payload []byte) error {
+	var pushEvent *github.PushEvent
+	if err := json.Unmarshal(payload, &pushEvent); err != nil {
+		return errors.Wrap(err, "failed to parse push event payload")
+	}
+
+	// Get the installation ID
+	installationID := githubapp.GetInstallationIDFromEvent(pushEvent)
+
+	// Get the installation client
+	client, err := h.NewInstallationClient(installationID)
+	if err != nil {
+		return err
+	}
+
+	// Get the repository information
+	repo := pushEvent.GetRepo()
+	repoOwner := repo.GetOwner().GetLogin()
+	repoName := repo.GetName()
+	repoDefaultBranch := repo.GetDefaultBranch()
+
+	// Check if the push was to the default branch
+	if pushEvent.GetRef() != fmt.Sprintf("refs/heads/%s", repoDefaultBranch) {
+		return nil
+	}
+
+	// Get the default branch
+	defaultBranch, _, err := client.Repositories.GetBranch(ctx, repoOwner, repoName, repo.GetDefaultBranch(), true)
+	if err != nil {
+		return err
+	}
+
+	// Get the latest commit on the default branch
+	defaultBranchSha := defaultBranch.GetCommit().GetSHA()
+
+	// Get all open pull requests
+	pullRequests, _, err := client.PullRequests.List(ctx, repoOwner, repoName, &github.PullRequestListOptions{
+		State: "open",
+	})
+	if err != nil {
+		return err
+	}
+
+	// Iterate over all open pull requests
+	for _, pr := range pullRequests {
+		//get the pull request information
+		prNum := pr.GetNumber()
+		headSha := pr.GetHead().GetSHA()
+		baseRef := pr.GetBase().GetRef()
+
+		// Compare the pull request head to the default branch
+		commitComparison, _, _ := client.Repositories.CompareCommits(ctx, repoOwner, repoName, defaultBranchSha, headSha, nil)
+
+		// Check if the pull request is behind the default branch
+		if commitComparison.GetBehindBy() >= 1 {
+			// update the pull request
+			updateResponse, _, err := client.PullRequests.UpdateBranch(ctx, repoOwner, repoName, prNum, nil)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Updated pull request %s/%s#%d. Message: %s\n", repoOwner, repoName, prNum, updateResponse.GetMessage())
+
+			// Comment on the pull request
+			msg := fmt.Sprintf("%s\n\n%s", h.preamble, updateResponse.GetMessage())
+			prComment := github.IssueComment{
+				Body: &msg,
+			}
+			fmt.Printf("Commenting on pull request %s/%s#%d\n", repoOwner, repoName, prNum)
+
+			if _, _, err := client.Issues.CreateComment(ctx, repoOwner, repoName, prNum, &prComment); err != nil {
+				return err
+			}
+
+		} else {
+			fmt.Printf("Pull request %s/%s#%d on branch %s is up to date with default branch %s\n", repoOwner, repoName, prNum, baseRef, defaultBranch.GetName())
+		}
+	}
 	return nil
 }
 
