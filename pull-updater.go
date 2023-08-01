@@ -103,6 +103,20 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 		prNum := pr.GetNumber()
 		headRef := pr.GetHead().GetRef()
 		baseRef := pr.GetBase().GetRef()
+		labels := pr.Labels
+
+		//check if the pull request has Approved to Merge label
+		approvedToMerge := false
+		for _, label := range labels {
+			if label.GetName() == "Approved to Merge" {
+				approvedToMerge = true
+			}
+		}
+		// Check if the pull request is approved to merge
+		if !approvedToMerge {
+			logger.Info().Msgf("Pull request %s/%s#%d is not approved to merge\n", repoOwner, repoName, prNum)
+			continue
+		}
 
 		// Compare the pull request head to the default branch
 		commitComparison, _, _ := client.Repositories.CompareCommits(ctx, repoOwner, repoName, baseRef, headRef, nil)
