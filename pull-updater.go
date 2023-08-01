@@ -92,9 +92,6 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 		return err
 	}
 
-	// Get the latest commit on the default branch
-	//defaultBranchSha := defaultBranch.GetCommit().GetSHA()
-
 	// Get all open pull requests
 	logger.Info().Msgf("Getting all open pull requests for %s/%s\n", repoOwner, repoName)
 	pullRequests, _, err := client.PullRequests.List(ctx, repoOwner, repoName, &github.PullRequestListOptions{
@@ -108,6 +105,7 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 
 	// Iterate over all open pull requests
 	for _, pr := range pullRequests {
+
 		//get the pull request information
 		prNum := pr.GetNumber()
 		headRef := pr.GetHead().GetRef()
@@ -115,7 +113,6 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 
 		// Compare the pull request head to the default branch
 		commitComparison, _, _ := client.Repositories.CompareCommits(ctx, repoOwner, repoName, baseRef, headRef, nil)
-
 		logger.Info().Msgf("Pull request %s/%s#%d is behind default branch %s by %d commits\n", repoOwner, repoName, prNum, repoDefaultBranch, commitComparison.GetBehindBy())
 
 		// Check if the pull request is behind the default branch
