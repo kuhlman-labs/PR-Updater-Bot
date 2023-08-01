@@ -57,88 +57,6 @@ func (h *PRBranchUpdateHandler) Handles() []string {
 	return []string{"push"}
 }
 
-/*
-func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryID string, payload []byte) error {
-	// Parse the pull request event
-	var event github.PullRequestEvent
-	if err := json.Unmarshal(payload, &event); err != nil {
-		return errors.Wrap(err, "failed to parse pull request event payload")
-	}
-
-	// Get the pull request information
-	repo := event.GetPullRequest().GetBase().GetRepo()
-	prNum := event.GetPullRequest().GetNumber()
-	installationID := githubapp.GetInstallationIDFromEvent(&event)
-	repoOwner := event.Repo.GetOwner().GetLogin()
-	repoName := event.Repo.GetName()
-	author := event.GetPullRequest().GetUser().GetLogin()
-	headRef := event.GetPullRequest().GetHead().GetRef()
-	headSha := event.GetPullRequest().GetHead().GetSHA()
-	baseRef := event.GetPullRequest().GetBase().GetRef()
-
-	// Prepare the context
-	ctx, logger := githubapp.PreparePRContext(ctx, installationID, repo, event.GetNumber())
-
-	// Check if the pull request was opened
-	if event.GetAction() == "opened" {
-		return nil
-	}
-
-	// Get the installation client
-	client, err := h.NewInstallationClient(installationID)
-	if err != nil {
-		return err
-	}
-
-	// Get latest commit on base branch
-	baseRepo, _, err := client.Repositories.GetBranch(ctx, repoOwner, repoName, baseRef, true)
-	if err != nil {
-		return err
-	}
-	baseSha := baseRepo.GetCommit().GetSHA()
-
-	// Compare the pull request head to the base branch
-	commitComparison, _, _ := client.Repositories.CompareCommits(ctx, repoOwner, repoName, baseSha, headSha, nil)
-
-	// Check if the pull request is behind the base branch
-	if commitComparison.GetBehindBy() >= 1 {
-		logger.Debug().Msgf("Pull request %s/%s#%d is behind base branch %s", repoOwner, repoName, prNum, baseRef)
-		logger.Debug().Msgf("Updating pull request %s/%s#%d by %s", repoOwner, repoName, prNum, author)
-
-		// Update the pull request
-		updateResponse, _, err := client.PullRequests.UpdateBranch(ctx, repoOwner, repoName, prNum, nil)
-		if err != nil {
-			// Check if the error is due to the job being scheduled on GitHub side
-			if err.Error() == "job scheduled on GitHub side; try again later" {
-				logger.Debug().Msgf("Job scheduled on GitHub side")
-
-				// Comment on the pull request
-				msg := fmt.Sprintf("%s\n\n%s", h.preamble, updateResponse.GetMessage())
-				prComment := github.IssueComment{
-					Body: &msg,
-				}
-				logger.Debug().Msgf("Commenting on pull request %s/%s#%d by %s", repoOwner, repoName, prNum, author)
-
-				if _, _, err := client.Issues.CreateComment(ctx, repoOwner, repoName, prNum, &prComment); err != nil {
-					logger.Error().Err(err).Msg("Failed to comment on pull request")
-				}
-
-				return nil
-
-			} else {
-				logger.Error().Err(err).Msgf("Failed to update pull request. Error: %s", err.Error())
-				return err
-			}
-		}
-
-	} else {
-		logger.Debug().Msgf("Pull request %s/%s#%d on branch %s is up to date with base branch %s", repoOwner, repoName, prNum, headRef, baseRef)
-	}
-
-	return nil
-}
-*/
-
 // This handler is called when the server recives a webhook event for a push to the default branch
 // The handler will then update all open pull requests that are behind the default branch
 func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryID string, payload []byte) error {
@@ -177,12 +95,15 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 	//defaultBranchSha := defaultBranch.GetCommit().GetSHA()
 
 	// Get all open pull requests
+	fmt.Printf("Getting all open pull requests for %s/%s\n", repoOwner, repoName)
 	pullRequests, _, err := client.PullRequests.List(ctx, repoOwner, repoName, &github.PullRequestListOptions{
 		State: "open",
 	})
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("Found %d open pull requests\n", len(pullRequests))
 
 	// Iterate over all open pull requests
 	for _, pr := range pullRequests {
@@ -194,27 +115,42 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 		// Compare the pull request head to the default branch
 		commitComparison, _, _ := client.Repositories.CompareCommits(ctx, repoOwner, repoName, baseRef, headRef, nil)
 
+		fmt.Printf("Pull request %s/%s#%d is behind default branch %s by %d commits\n", repoOwner, repoName, prNum, repoDefaultBranch, commitComparison.GetBehindBy())
+
 		// Check if the pull request is behind the default branch
 		if commitComparison.GetBehindBy() >= 1 {
+			fmt.Printf("Pull request %s/%s#%d is behind default branch %s\n", repoOwner, repoName, prNum, repoDefaultBranch)
 			// update the pull request
 			updateResponse, _, err := client.PullRequests.UpdateBranch(ctx, repoOwner, repoName, prNum, nil)
 			if err != nil {
-				return err
-			}
+				// Check if the error is due to the job being scheduled on GitHub side
+				if err.Error() == "job scheduled on GitHub side; try again later" {
+					fmt.Printf("Job scheduled on GitHub side\n")
 
+					// Comment on the pull request
+					msg := fmt.Sprintf("%s\n\n%s", h.preamble, updateResponse.GetMessage())
+					prComment := github.IssueComment{
+						Body: &msg,
+					}
+					fmt.Printf("Commenting on pull request %s/%s#%d\n", repoOwner, repoName, prNum)
+
+					if _, _, err := client.Issues.CreateComment(ctx, repoOwner, repoName, prNum, &prComment); err != nil {
+						return err
+					}
+				} else {
+					// Comment on the pull request that the update failed
+					msg := fmt.Sprintf("Failed to update pull request. Error: %s", err.Error())
+					prComment := github.IssueComment{
+						Body: &msg,
+					}
+					fmt.Printf("Commenting on pull request %s/%s#%d\n", repoOwner, repoName, prNum)
+					if _, _, err := client.Issues.CreateComment(ctx, repoOwner, repoName, prNum, &prComment); err != nil {
+						return err
+					}
+					return err
+				}
+			}
 			fmt.Printf("Updated pull request %s/%s#%d. Message: %s\n", repoOwner, repoName, prNum, updateResponse.GetMessage())
-
-			// Comment on the pull request
-			msg := fmt.Sprintf("%s\n\n%s", h.preamble, updateResponse.GetMessage())
-			prComment := github.IssueComment{
-				Body: &msg,
-			}
-			fmt.Printf("Commenting on pull request %s/%s#%d\n", repoOwner, repoName, prNum)
-
-			if _, _, err := client.Issues.CreateComment(ctx, repoOwner, repoName, prNum, &prComment); err != nil {
-				return err
-			}
-
 		} else {
 			fmt.Printf("Pull request %s/%s#%d on branch %s is up to date with default branch %s\n", repoOwner, repoName, prNum, headRef, defaultBranch.GetName())
 		}
