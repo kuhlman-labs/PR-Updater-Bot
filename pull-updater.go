@@ -216,7 +216,7 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 			}
 
 		} else {
-			fmt.Printf("Pull request %s/%s#%d on branch %s is up to date with default branch %s\n", repoOwner, repoName, prNum, baseRef, defaultBranch.GetName())
+			fmt.Printf("Pull request %s/%s#%d on branch %s is up to date with default branch %s\n", repoOwner, repoName, prNum, headRef, defaultBranch.GetName())
 		}
 	}
 	return nil
