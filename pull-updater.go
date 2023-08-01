@@ -86,12 +86,6 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 		return nil
 	}
 
-	// Get the default branch
-	defaultBranch, _, err := client.Repositories.GetBranch(ctx, repoOwner, repoName, repo.GetDefaultBranch(), true)
-	if err != nil {
-		return err
-	}
-
 	// Get all open pull requests
 	logger.Info().Msgf("Getting all open pull requests for %s/%s\n", repoOwner, repoName)
 	pullRequests, _, err := client.PullRequests.List(ctx, repoOwner, repoName, &github.PullRequestListOptions{
@@ -105,7 +99,6 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 
 	// Iterate over all open pull requests
 	for _, pr := range pullRequests {
-
 		//get the pull request information
 		prNum := pr.GetNumber()
 		headRef := pr.GetHead().GetRef()
@@ -113,6 +106,7 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 
 		// Compare the pull request head to the default branch
 		commitComparison, _, _ := client.Repositories.CompareCommits(ctx, repoOwner, repoName, baseRef, headRef, nil)
+
 		logger.Info().Msgf("Pull request %s/%s#%d is behind default branch %s by %d commits\n", repoOwner, repoName, prNum, repoDefaultBranch, commitComparison.GetBehindBy())
 
 		// Check if the pull request is behind the default branch
@@ -150,7 +144,7 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 			}
 			logger.Info().Msgf("Updated pull request %s/%s#%d. Message: %s\n", repoOwner, repoName, prNum, updateResponse.GetMessage())
 		} else {
-			logger.Info().Msgf("Pull request %s/%s#%d on branch %s is up to date with default branch %s\n", repoOwner, repoName, prNum, headRef, defaultBranch.GetName())
+			logger.Info().Msgf("Pull request %s/%s#%d on branch %s is up to date with default branch %s\n", repoOwner, repoName, prNum, headRef, repoDefaultBranch)
 		}
 	}
 	return nil
