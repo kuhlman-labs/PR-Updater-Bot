@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v53/github"
@@ -107,14 +108,21 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 
 		//check if the pull request has Approved to Merge label
 		approvedToMerge := false
+		readyToMerge := false
 		for _, label := range labels {
-			if label.GetName() == "Approved to Merge" {
+			// Convert the label name to lowercase
+			labelName := label.GetName()
+			labelName = strings.ToLower(labelName)
+			if labelName == "approved to merge" {
 				approvedToMerge = true
+			}
+			if labelName == "ready to merge" {
+				readyToMerge = true
 			}
 		}
 		// Check if the pull request is approved to merge
-		if !approvedToMerge {
-			logger.Info().Msgf("Pull request %s/%s#%d is not approved to merge\n", repoOwner, repoName, prNum)
+		if !approvedToMerge || !readyToMerge {
+			logger.Info().Msgf("Pull request %s/%s#%d is not mergable\n", repoOwner, repoName, prNum)
 			continue
 		}
 
