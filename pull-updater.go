@@ -122,14 +122,14 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 	}
 
 	// Get all open pull requests
-	logger.Info().Msgf("Getting all open pull requests for %s/%s\n", repoOwner, repoName)
+	logger.Info().Msgf("Getting all open pull requests for %s/%s", repoOwner, repoName)
 	pullRequests, _, err := client.PullRequests.List(ctx, repoOwner, repoName, &github.PullRequestListOptions{
 		State: "open",
 	})
 	if err != nil {
 		return err
 	}
-	logger.Info().Msgf("Found %d open pull requests\n", len(pullRequests))
+	logger.Info().Msgf("Found %d open pull requests", len(pullRequests))
 
 	// Iterate over all open pull requests
 	for _, pr := range pullRequests {
@@ -142,12 +142,12 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 		// Check if the pull request has the correct labels
 		hasLabels := true
 		if len(h.labels) > 0 {
-			logger.Info().Msgf("Checking if pull request %s/%s#%d has the correct labels\n", repoOwner, repoName, prNum)
+			logger.Info().Msgf("Checking if pull request %s/%s#%d has the correct labels", repoOwner, repoName, prNum)
 			hasLabels = hasAllLabels(h.labels, prLabels)
 			if hasLabels {
-				logger.Info().Msgf("Pull request %s/%s#%d has the correct labels\n", repoOwner, repoName, prNum)
+				logger.Info().Msgf("Pull request %s/%s#%d has the correct labels", repoOwner, repoName, prNum)
 			} else {
-				logger.Info().Msgf("Pull request %s/%s#%d does not have the correct labels\n", repoOwner, repoName, prNum)
+				logger.Info().Msgf("Pull request %s/%s#%d does not have the correct labels", repoOwner, repoName, prNum)
 				continue
 			}
 		}
@@ -158,19 +158,19 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 		// Check if the pull request is behind the default branch
 		if commitComparison.GetBehindBy() >= 1 {
 			// Update the pull request branch
-			logger.Info().Msgf("Pull request %s/%s#%d is behind default branch %s by %d commits\n", repoOwner, repoName, prNum, repoDefaultBranch, commitComparison.GetBehindBy())
+			logger.Info().Msgf("Pull request %s/%s#%d is behind default branch %s by %d commits", repoOwner, repoName, prNum, repoDefaultBranch, commitComparison.GetBehindBy())
 			updateResponse, _, err := client.PullRequests.UpdateBranch(ctx, repoOwner, repoName, prNum, nil)
 			if err != nil {
 				// Check if the error is due to the job being scheduled on GitHub side
 				if err.Error() == "job scheduled on GitHub side; try again later" {
-					logger.Info().Msgf("Job scheduled on GitHub side\n")
+					logger.Info().Msgf("Job scheduled on GitHub side")
 
 					// Comment on the pull request
 					msg := fmt.Sprintf("%s\n\n%s", h.preamble, updateResponse.GetMessage())
 					prComment := github.IssueComment{
 						Body: &msg,
 					}
-					logger.Info().Msgf("Commenting on pull request %s/%s#%d\n", repoOwner, repoName, prNum)
+					logger.Info().Msgf("Commenting on pull request %s/%s#%d", repoOwner, repoName, prNum)
 					if _, _, err := client.Issues.CreateComment(ctx, repoOwner, repoName, prNum, &prComment); err != nil {
 						return err
 					}
@@ -180,15 +180,15 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 					prComment := github.IssueComment{
 						Body: &msg,
 					}
-					logger.Info().Msgf("Commenting on pull request %s/%s#%d\n", repoOwner, repoName, prNum)
+					logger.Info().Msgf("Commenting on pull request %s/%s#%d", repoOwner, repoName, prNum)
 					if _, _, err := client.Issues.CreateComment(ctx, repoOwner, repoName, prNum, &prComment); err != nil {
 						return err
 					}
 				}
 			}
-			logger.Info().Msgf("Updated pull request %s/%s#%d. Message: %s\n", repoOwner, repoName, prNum, updateResponse.GetMessage())
+			logger.Info().Msgf("Updated pull request %s/%s#%d. Message: %s", repoOwner, repoName, prNum, updateResponse.GetMessage())
 		} else {
-			logger.Info().Msgf("Pull request %s/%s#%d on branch %s is up to date with default branch %s\n", repoOwner, repoName, prNum, headRef, repoDefaultBranch)
+			logger.Info().Msgf("Pull request %s/%s#%d on branch %s is up to date with default branch %s", repoOwner, repoName, prNum, headRef, repoDefaultBranch)
 		}
 	}
 	return nil
