@@ -215,7 +215,7 @@ func main() {
 		config.Github,
 		githubapp.WithClientUserAgent("pr-updater-app/1.0.0"),
 		githubapp.WithClientTimeout(3*time.Second),
-		githubapp.WithClientCaching(false, func() httpcache.Cache { return httpcache.NewMemoryCache() }),
+		githubapp.WithClientCaching(true, func() httpcache.Cache { return httpcache.NewMemoryCache() }),
 		githubapp.WithClientMiddleware(
 			githubapp.ClientMetrics(metricsRegistry),
 		),
