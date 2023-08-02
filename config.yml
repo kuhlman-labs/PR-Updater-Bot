@@ -13,4 +13,7 @@ github:
       -----END RSA PRIVATE KEY-----
 
 app_configuration:
-  pull_request_preamble: "PR Updater bot has updated this PR."
+  pull_request_preamble: "The Pull Request has been updated with the latest changes from the base branch."
+  pull_request_labels:
+    - "label 1"
+    - "label 2"

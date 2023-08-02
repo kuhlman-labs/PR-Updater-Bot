@@ -43,6 +43,9 @@ Example webhook URL: `http://<ip>:<port>/api/github/hook`
 
 In the `config.yml` file, update the `app_id` , `wehook secret` and `private_key` fields with the values from your GitHub App. Update the URL field with the URL of your GitHub Enterprise instance.
 
+For the `app_configuration` field, you can specify the `pull_request_preamble` which will be added to the PR comment when the PR is updated. You can also specify the `pull_request_labels` which will filter the PRs that the app will update. If you do not specify any labels, the app will update all Open PRs.
+
+
 ### Run the App
 
 Start the app by running `go run pull-updater.go`. You can also build the app by running `go build` and then running the executable.
