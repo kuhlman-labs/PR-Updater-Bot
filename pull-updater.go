@@ -155,12 +155,10 @@ func (h *PRBranchUpdateHandler) Handle(ctx context.Context, eventType, deliveryI
 		// Compare the pull request head to the default branch
 		commitComparison, _, _ := client.Repositories.CompareCommits(ctx, repoOwner, repoName, baseRef, headRef, nil)
 
-		logger.Info().Msgf("Pull request %s/%s#%d is behind default branch %s by %d commits\n", repoOwner, repoName, prNum, repoDefaultBranch, commitComparison.GetBehindBy())
-
 		// Check if the pull request is behind the default branch
 		if commitComparison.GetBehindBy() >= 1 {
-			logger.Info().Msgf("Pull request %s/%s#%d is behind default branch %s\n", repoOwner, repoName, prNum, repoDefaultBranch)
-			// Update the pull request
+			// Update the pull request branch
+			logger.Info().Msgf("Pull request %s/%s#%d is behind default branch %s by %d commits\n", repoOwner, repoName, prNum, repoDefaultBranch, commitComparison.GetBehindBy())
 			updateResponse, _, err := client.PullRequests.UpdateBranch(ctx, repoOwner, repoName, prNum, nil)
 			if err != nil {
 				// Check if the error is due to the job being scheduled on GitHub side
