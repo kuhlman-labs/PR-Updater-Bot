@@ -66,20 +66,21 @@ func (h *PRBranchUpdateHandler) Handles() []string {
 }
 
 // Check if the pull request has the required labels from the configuration
-func hasAllLabels(labels []string, prLabels []*github.Label) bool {
-	for _, label := range labels {
-		if !contains(prLabels, label) {
+func hasAllLabels(configLabels []string, prLabels []*github.Label) bool {
+	for _, configLabel := range configLabels {
+		if !contains(prLabels, configLabel) {
 			return false
 		}
 	}
 	return true
 }
 
-func contains(prLabels []*github.Label, label string) bool {
+func contains(prLabels []*github.Label, configLabel string) bool {
 	for _, prLabel := range prLabels {
 		prLabel := prLabel.GetName()
 		prLabel = strings.ToLower(prLabel)
-		if prLabel == label {
+		configLabel = strings.ToLower(configLabel)
+		if prLabel == configLabel {
 			return true
 		}
 	}
